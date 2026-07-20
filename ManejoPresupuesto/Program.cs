@@ -9,7 +9,8 @@ builder.Services.AddTransient<IRepositorioTiposCuentas, RepositorioTiposCuentas>
 builder.Services.AddTransient<IServiciosUsuarios, serviciosUsuarios>();
 builder.Services.AddTransient<IRepositorioCuentas, RepositorioCuentas>();
 builder.Services.AddTransient<IRepositorioCategorias, RepositorioCategorias>();
-builder.Services.AddAutoMapper(typeof(Program));
+builder.Services.AddTransient<IRepositorioTransacciones, RepositorioTransacciones>();                                                                                                                                                  
+builder.Services.AddAutoMapper(typeof(Program)); 
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
