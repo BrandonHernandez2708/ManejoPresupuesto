@@ -9,6 +9,7 @@ namespace ManejoPresupuesto.servicios
     public interface IRepositorioTransacciones
     {
         Task Actualizar(Transaccion transaccion, decimal montoAnterior, int cuentaAnterior);
+        Task Borrar(int id);
         Task Crear(Transaccion transaccion);
         Task<Transaccion> ObtenerPorId(int id, int usuarioId);
     }
@@ -66,6 +67,11 @@ namespace ManejoPresupuesto.servicios
 
 
 
+        }
+        public async Task Borrar(int id)
+        {
+            using var connection = new SqlConnection(connectionString);
+            await connection.ExecuteAsync("Transacciones_Borrar", new { Id = id }, commandType: System.Data.CommandType.StoredProcedure);
         }
     }
     }
