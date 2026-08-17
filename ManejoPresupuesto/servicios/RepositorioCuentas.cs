@@ -55,7 +55,7 @@ namespace ManejoPresupuesto.servicios
                                                                 Cuentas.Nombre, 
                                                                Balance, 
                                                                 Descripcion,
-                                                                tc.Id
+                                                                TipoCuentaId,
                                                             FROM Cuentas 
                                                             INNER JOIN TiposCuentas tc 
                                                                 ON tc.Id = Cuentas.TipoCuentaId 

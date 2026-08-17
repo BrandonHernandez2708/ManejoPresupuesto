@@ -4,6 +4,7 @@ using ManejoPresupuesto.servicios;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.IdentityModel.Abstractions;
+using System.Reflection;
 
 namespace ManejoPresupuesto.Controllers
 {
@@ -26,9 +27,47 @@ namespace ManejoPresupuesto.Controllers
             this.repositorioTransacciones = repositorioTransacciones;
             this.mapper = mapper;
         }
-        public IActionResult Index()
+        public async Task<IActionResult> IndexAsync(int mes , int año)
         {
-            return View();
+            var usuarioId = servicioUsuarios.ObtenerUsuarioId();
+            DateTime fechaInicio;
+            DateTime fechaFin;
+            if (mes <= 0 || mes > 12 || año <= 1900)
+            {
+                var hoy = DateTime.Today;
+                fechaInicio = new DateTime(hoy.Year, hoy.Month, 1);
+            }
+            else
+            {
+                fechaInicio = new DateTime(año, mes, 1);
+            }
+            fechaFin = fechaInicio.AddMonths(1).AddDays(-1);
+            var parametro = new ParametroObtenerTransaccionesPorUsuario()
+            {
+                UsuarioId = usuarioId,
+                FechaInicio = fechaInicio,
+                FechaFin = fechaFin
+            };
+            var transacciones = await repositorioTransacciones.ObtenerPorUsuarioId(parametro);
+            var modelo = new ReporteTransaccionesDetallada();
+           
+            var transaccionesPorFecha = transacciones.OrderByDescending(x => x.FechaTransaccion)
+                .GroupBy(x => x.FechaTransaccion)
+                .Select(grupo => new ReporteTransaccionesDetallada.TransaccionesPorFecha
+                {
+                    FechaTransaccion = grupo.Key,
+                    Transacciones = grupo.AsEnumerable()
+                });
+            modelo.TransaccionesAgrupadas = transaccionesPorFecha;
+            modelo.FechaInicio = fechaInicio;
+            modelo.FechaFin = fechaFin;
+            ViewBag.mesAnterior = fechaInicio.AddMonths(-1).Month;
+            ViewBag.añoAnterior = fechaInicio.AddMonths(-1).Year;
+            ViewBag.mesPosterior = fechaInicio.AddMonths(1).Month;
+            ViewBag.añoPosterior = fechaInicio.AddMonths(1).Year;
+            ViewBag.urlRetorno = HttpContext.Request.Path + HttpContext.Request.QueryString;
+            return View(modelo);
+
         }
         public async Task<IActionResult> Crear()
         {
@@ -67,7 +106,7 @@ namespace ManejoPresupuesto.Controllers
             return RedirectToAction("Index");
         }
         [HttpGet]
-        public async Task<IActionResult> Editar(int id)
+        public async Task<IActionResult> Editar(int id,string urlRetorno = null)
         {
             var usuarioId = servicioUsuarios.ObtenerUsuarioId();
             var transaccion = await repositorioTransacciones.ObtenerPorId(id, usuarioId);
@@ -85,6 +124,7 @@ namespace ManejoPresupuesto.Controllers
             modelo.CuentaAnteriorId = modelo.CuentaId;
             modelo.Categorias = await ObtenerCategorias(usuarioId, modelo.TipoOperacionId);
             modelo.Cuentas = await ObtenerCuentas(usuarioId);
+            modelo.UrlRetorno = urlRetorno;
             return View(modelo);
 
             }
@@ -114,11 +154,19 @@ namespace ManejoPresupuesto.Controllers
                 transaccion.Monto *= -1;
             }
             await repositorioTransacciones.Actualizar(transaccion, modelo.MontoAnterior, modelo.CuentaAnteriorId);
-            return RedirectToAction("Index");
+            if (!string.IsNullOrEmpty(modelo.UrlRetorno) && Url.IsLocalUrl(modelo.UrlRetorno))
+            {
+                return LocalRedirect(modelo.UrlRetorno);
+            }
+            else
+            {
+                return RedirectToAction("Index");
+            }
+
 
         }
         [HttpPost]
-        public async Task <IActionResult> Borrar(int id)
+        public async Task <IActionResult> Borrar(int id, string urlRetorno = null)
         {
             var usuarioId = servicioUsuarios.ObtenerUsuarioId();
             var transaccion = await repositorioTransacciones.ObtenerPorId(id, usuarioId);
@@ -127,7 +175,15 @@ namespace ManejoPresupuesto.Controllers
                 return RedirectToAction("NoEncontrado", "Home");
             }
             await repositorioTransacciones.Borrar(id);
-            return RedirectToAction("Index");
+            if (!string.IsNullOrEmpty(urlRetorno) && Url.IsLocalUrl(urlRetorno))
+            {
+                return LocalRedirect(urlRetorno);
+            }
+            else
+            {
+                return RedirectToAction("Index");
+            }
+           
         }
 
         private async Task<IEnumerable<SelectListItem>> ObtenerCuentas(int usuarioId)
